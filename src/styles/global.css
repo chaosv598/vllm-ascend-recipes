@@ -253,14 +253,21 @@ pre code {
 }
 
 :root:not(.dark) pre {
-  background: #1a1f2e;
-  border-color: rgba(0, 0, 0, 0.08);
+  background: #f6f8fa;
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #24292f;
 }
 
 :root:not(.dark) code {
   background: rgba(16, 185, 129, 0.08);
   color: #047857;
   border-color: rgba(16, 185, 129, 0.15);
+}
+
+:root:not(.dark) pre code {
+  color: #24292f !important;
+  background: none !important;
+  border: none !important;
 }
 
 :root:not(.dark) .prose h2 { color: #0f172a; }
@@ -341,3 +348,9 @@ pre code {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.15), transparent);
 }
+
+/* ===== LANGUAGE TOGGLE ===== */
+html[lang="en"] .lang-en { display: block; }
+html[lang="en"] .lang-zh { display: none; }
+html[lang="zh"] .lang-en { display: none; }
+html[lang="zh"] .lang-zh { display: block; }

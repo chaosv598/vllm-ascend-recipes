@@ -3,13 +3,15 @@ import { basename } from 'node:path';
 import type { Model, ModelListItem, ProviderInfo } from './types';
 import { modelSchema } from './schema';
 
-export async function getAllModels(): Promise<Model[]> {
-  const globResult = import.meta.glob('/models/**/*.yaml', {
-    query: '?raw',
-    import: 'default',
-  });
+const globEn = import.meta.glob('/models/en/**/*.yaml', { query: '?raw', import: 'default' });
+const globZh = import.meta.glob('/models/zh/**/*.yaml', { query: '?raw', import: 'default' });
 
-  const entries = await Promise.all(
+const globMap = { en: globEn, zh: globZh };
+
+function loadGlob(lang: 'en' | 'zh') {
+  const globResult = globMap[lang];
+
+  return Promise.all(
     Object.entries(globResult).map(async ([path, loader]) => {
       const raw = (await loader()) as string;
       const data = parse(raw);
@@ -27,12 +29,15 @@ export async function getAllModels(): Promise<Model[]> {
       } as Model;
     })
   );
+}
 
+export async function getAllModels(lang: 'en' | 'zh' = 'en'): Promise<Model[]> {
+  const entries = await loadGlob(lang);
   return entries.sort((a, b) => b.updated.localeCompare(a.updated));
 }
 
-export async function getModel(provider: string, model: string): Promise<Model | null> {
-  const all = await getAllModels();
+export async function getModel(provider: string, model: string, lang: 'en' | 'zh' = 'en'): Promise<Model | null> {
+  const all = await getAllModels(lang);
   return all.find(
     (m) =>
       m._provider_slug.toLowerCase() === provider.toLowerCase() &&
@@ -40,8 +45,8 @@ export async function getModel(provider: string, model: string): Promise<Model |
   ) ?? null;
 }
 
-export async function getProviders(): Promise<ProviderInfo[]> {
-  const all = await getAllModels();
+export async function getProviders(lang: 'en' | 'zh' = 'en'): Promise<ProviderInfo[]> {
+  const all = await getAllModels(lang);
   const map = new Map<string, ProviderInfo>();
 
   for (const m of all) {
@@ -55,13 +60,8 @@ export async function getProviders(): Promise<ProviderInfo[]> {
   return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }
 
-export async function getModelsByProvider(providerSlug: string): Promise<Model[]> {
-  const all = await getAllModels();
-  return all.filter((m) => m._provider_slug.toLowerCase() === providerSlug.toLowerCase());
-}
-
-export async function getModelList(): Promise<ModelListItem[]> {
-  const all = await getAllModels();
+export async function getModelList(lang: 'en' | 'zh' = 'en'): Promise<ModelListItem[]> {
+  const all = await getAllModels(lang);
   return all.map((m) => {
     const npus = [...new Set(m.scenarios.map((s) => s.npu))];
     const precisions = [...new Set(m.scenarios.map((s) => s.precision))];

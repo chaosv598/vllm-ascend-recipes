@@ -18,11 +18,13 @@ interface ModelItem {
 }
 
 interface SearchBarProps {
-  models: ModelItem[];
+  modelsEn: ModelItem[];
+  modelsZh: ModelItem[];
 }
 
-export default function SearchBar({ models }: SearchBarProps) {
-  const { t } = useLang();
+export default function SearchBar({ modelsEn, modelsZh }: SearchBarProps) {
+  const { lang, t } = useLang();
+  const models = lang === 'zh' ? modelsZh : modelsEn;
   const [query, setQuery] = useState('');
   const [filterNpu, setFilterNpu] = useState('');
   const [filterArch, setFilterArch] = useState('');

@@ -10,33 +10,44 @@ import { getAllModels, formatContextLength, formatParameters } from '../../lib/m
 import type { Model } from '../../lib/types';
 
 export const getStaticPaths = (async () => {
-  const models = await getAllModels();
-  return models.map((model) => ({
-    params: { provider: model._provider_slug, model: model._model_slug },
-    props: { model },
-  }));
+  const modelsEn = await getAllModels('en');
+  const modelsZh = await getAllModels('zh');
+  const zhMap = new Map(modelsZh.map(m => [`${m._provider_slug}/${m._model_slug}`, m]));
+
+  return modelsEn.map((modelEn) => {
+    const key = `${modelEn._provider_slug}/${modelEn._model_slug}`;
+    const modelZh = zhMap.get(key) ?? modelEn;
+    return {
+      params: { provider: modelEn._provider_slug, model: modelEn._model_slug },
+      props: { modelEn, modelZh },
+    };
+  });
 }) satisfies GetStaticPaths;
 
-interface Props { model: Model; }
+interface Props { modelEn: Model; modelZh: Model; }
 
-const { model } = Astro.props;
+const { modelEn, modelZh } = Astro.props;
+const model = modelEn;
 const base = import.meta.env.BASE_URL;
 const basePrefix = base.endsWith('/') ? base : base + '/';
 const baseSuffix = base.endsWith('/') ? base.slice(0, -1) : base;
 
-const editUrl = `https://github.com/vllm-ascend/vllm-ascend-recipes/edit/main/models/${model._provider_slug}/${model._model_slug}.yaml`;
-const hasQuantization = !!model.quantization;
-const hasPrerequisites = !!model.prerequisites && model.prerequisites.length > 0;
-const hasAccuracy = !!model.performance_accuracy;
-const hasBenchmark = !!model.performance_benchmark;
-const npus = [...new Set(model.scenarios.map((s) => s.npu))];
+const editUrl = `https://github.com/vllm-ascend/vllm-ascend-recipes/edit/main/models/en/${model._provider_slug}/${model._model_slug}.yaml`;
+const hasQuantization = !!modelEn.quantization;
+const hasPrerequisites = !!modelEn.prerequisites && modelEn.prerequisites.length > 0;
+const hasAccuracy = !!modelEn.performance_accuracy;
+const hasBenchmark = !!modelEn.performance_benchmark;
+const npus = [...new Set(modelEn.scenarios.map((s) => s.npu))];
 const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-tight mb-4";
+
+function renderDesc(text: string) {
+  return `<p>${text}</p>`;
+}
 ---
 
-<BaseLayout title={`${model.title} | vLLM-Ascend Recipes`} description={model.description}>
+<BaseLayout title={`${model.title} | vLLM-Ascend Recipes`} description={modelEn.description}>
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
-    <!-- Breadcrumb + Title -->
     <div class="mb-8">
       <div class="flex items-center gap-1.5 text-xs font-mono text-ink-600 mb-4">
         <a href={baseSuffix} class="hover:text-accent-400 transition-colors" data-i18n="home">~</a>
@@ -47,7 +58,10 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
       </div>
 
       <h1 class="font-display text-3xl font-bold text-ink-50 tracking-tight mb-2">{model.title}</h1>
-      <p class="text-sm text-ink-400 max-w-2xl leading-relaxed mb-4">{model.description}</p>
+      <div class="text-sm text-ink-400 max-w-2xl leading-relaxed mb-4">
+        <MarkdownContent markdown={modelEn.description} lang="en" />
+        <MarkdownContent markdown={modelZh.description} lang="zh" hidden />
+      </div>
 
       <div class="flex flex-wrap gap-2 mb-4">
         <Tag label={model.architecture === 'moe' ? 'MoE' : 'Dense'} color="purple" />
@@ -70,14 +84,15 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
 
     <section class="py-8">
       <h2 class={sectionTitle} data-i18n="sectionOverview">Overview</h2>
-      <MarkdownContent markdown={model.overview} />
+      <MarkdownContent markdown={modelEn.overview} lang="en" />
+      <MarkdownContent markdown={modelZh.overview} lang="zh" hidden />
     </section>
 
     <div class="section-divider"></div>
 
     <section class="py-8">
       <h2 class={sectionTitle} data-i18n="sectionWeightDownload">Weight Download</h2>
-      <WeightDownloadTabs client:load downloads={model.weight_download} />
+      <WeightDownloadTabs client:load downloadsEn={modelEn.weight_download} downloadsZh={modelZh.weight_download} />
     </section>
 
     <div class="section-divider"></div>
@@ -86,7 +101,8 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
       <>
         <section class="py-8">
           <h2 class={sectionTitle} data-i18n="sectionQuantization">Quantization</h2>
-          <MarkdownContent markdown={model.quantization!.content} />
+          <MarkdownContent markdown={modelEn.quantization!.content} lang="en" />
+          <MarkdownContent markdown={modelZh.quantization?.content ?? modelEn.quantization!.content} lang="zh" hidden />
         </section>
         <div class="section-divider"></div>
       </>
@@ -97,12 +113,17 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
         <section class="py-8">
           <h2 class={sectionTitle} data-i18n="sectionPrerequisites">Prerequisites</h2>
           <div class="space-y-6">
-            {model.prerequisites!.map((item) => (
-              <div>
-                <h3 class="font-display text-base font-semibold text-ink-200 mb-2">{item.title}</h3>
-                <MarkdownContent markdown={item.content} />
-              </div>
-            ))}
+            {modelEn.prerequisites!.map((item, i) => {
+              const itemZh = modelZh.prerequisites?.[i] ?? item;
+              return (
+                <div>
+                  <h3 class="lang-en font-display text-base font-semibold text-ink-200 mb-2">{item.title}</h3>
+                  <h3 class="lang-zh hidden font-display text-base font-semibold text-ink-200 mb-2">{itemZh.title}</h3>
+                  <MarkdownContent markdown={item.content} lang="en" />
+                  <MarkdownContent markdown={itemZh.content} lang="zh" hidden />
+                </div>
+              );
+            })}
           </div>
         </section>
         <div class="section-divider"></div>
@@ -111,7 +132,7 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
 
     <section class="py-8">
       <h2 class={sectionTitle} data-i18n="sectionEnvSetup">Environment Setup</h2>
-      <EnvSetupTabs client:load envSetup={model.env_setup} />
+      <EnvSetupTabs client:load envSetupEn={modelEn.env_setup} envSetupZh={modelZh.env_setup} />
     </section>
 
     <div class="section-divider"></div>
@@ -121,7 +142,7 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
       <p class="text-xs text-ink-500 mb-6 font-mono" data-i18n="sectionScenarioDescription">
         Select NPU type, precision, and deployment mode to view the corresponding deployment instructions.
       </p>
-      <CascadeSelector client:load scenarios={model.scenarios} />
+      <CascadeSelector client:load scenariosEn={modelEn.scenarios} scenariosZh={modelZh.scenarios} />
     </section>
 
     <div class="section-divider"></div>
@@ -134,13 +155,13 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-ink-800/60 bg-ink-900/40">
-                  {model.performance_accuracy!.headers.map((h) => (
+                  {modelEn.performance_accuracy!.headers.map((h) => (
                     <th class="text-left py-2.5 px-4 font-mono text-xs font-medium text-accent-400 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {model.performance_accuracy!.rows.map((row) => (
+                {modelEn.performance_accuracy!.rows.map((row) => (
                   <tr class="border-b border-ink-800/40 last:border-0 hover:bg-ink-900/30 transition-colors">
                     {row.map((cell) => (
                       <td class="py-2.5 px-4 text-ink-400 font-mono text-xs">{cell}</td>
@@ -163,13 +184,13 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-ink-800/60 bg-ink-900/40">
-                  {model.performance_benchmark!.headers.map((h) => (
+                  {modelEn.performance_benchmark!.headers.map((h) => (
                     <th class="text-left py-2.5 px-4 font-mono text-xs font-medium text-accent-400 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {model.performance_benchmark!.rows.map((row) => (
+                {modelEn.performance_benchmark!.rows.map((row) => (
                   <tr class="border-b border-ink-800/40 last:border-0 hover:bg-ink-900/30 transition-colors">
                     {row.map((cell) => (
                       <td class="py-2.5 px-4 text-ink-400 font-mono text-xs">{cell}</td>
@@ -187,7 +208,7 @@ const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-ti
     <section class="py-8">
       <h2 class={sectionTitle} data-i18n="sectionReferences">References</h2>
       <ul class="space-y-1.5">
-        {model.references.map((ref) => (
+        {modelEn.references.map((ref) => (
           <li>
             <a href={ref.url} target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm text-accent-400 hover:text-accent-300 transition-colors font-mono">
               <span class="text-ink-600">→</span>

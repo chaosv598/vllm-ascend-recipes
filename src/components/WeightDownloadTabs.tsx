@@ -13,7 +13,8 @@ interface WeightDownload {
 }
 
 interface WeightDownloadTabsProps {
-  downloads: WeightDownload[];
+  downloadsEn: WeightDownload[];
+  downloadsZh: WeightDownload[];
 }
 
 function renderMarkdown(md: string): string {
@@ -47,8 +48,9 @@ function renderMarkdown(md: string): string {
   return result.join('\n');
 }
 
-export default function WeightDownloadTabs({ downloads }: WeightDownloadTabsProps) {
-  const { t } = useLang();
+export default function WeightDownloadTabs({ downloadsEn, downloadsZh }: WeightDownloadTabsProps) {
+  const { lang, t } = useLang();
+  const downloads = lang === 'zh' ? downloadsZh : downloadsEn;
   const [versionIdx, setVersionIdx] = useState(0);
   const [sourceIdx, setSourceIdx] = useState(0);
 

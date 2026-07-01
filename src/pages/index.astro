@@ -1,10 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ModelCard from '../components/ModelCard.astro';
-import { getAllModels, getProviders, formatContextLength, formatParameters } from '../lib/models';
+import { getAllModels, getProviders } from '../lib/models';
 
-const allModels = await getAllModels();
-const providers = await getProviders();
+const allModels = await getAllModels('en');
+const providers = await getProviders('en');
 const latestModels = allModels.slice(0, 8);
 const base = import.meta.env.BASE_URL;
 const basePrefix = base.endsWith('/') ? base : base + '/';
@@ -12,20 +12,20 @@ const baseSuffix = base.endsWith('/') ? base.slice(0, -1) : base;
 ---
 
 <BaseLayout>
-  <!-- Hero -->
   <section class="relative overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
       <div class="max-w-3xl">
         <div class="animate-fade-up flex items-center gap-2 mb-6">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-accent-500/20 bg-accent-500/5 text-[11px] font-mono text-accent-400">
             <span class="w-1.5 h-1.5 rounded-full bg-accent-400 animate-pulse"></span>
-            {allModels.length} recipes
+            {allModels.length} <span data-i18n="recipes">recipes</span>
           </span>
         </div>
 
         <h1 class="animate-fade-up stagger-1 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-ink-50 mb-5 leading-[1.05]">
-          Deploy any model<br/>
-          on <span class="text-accent-400 terminal-glow">Ascend NPUs</span>
+          <span data-i18n="heroH1Pre">Deploy any model</span>
+          <br/>
+          <span data-i18n="heroH1On">on</span> <span class="text-accent-400 terminal-glow" data-i18n="heroH1Highlight">Ascend NPUs</span>
         </h1>
 
         <p class="animate-fade-up stagger-2 text-base text-ink-400 max-w-xl leading-relaxed mb-2" data-i18n="heroDescription">
@@ -50,12 +50,11 @@ const baseSuffix = base.endsWith('/') ? base.slice(0, -1) : base;
     </div>
   </section>
 
-  <!-- Latest Recipes -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-3">
         <h2 class="font-display text-lg font-semibold text-ink-100 tracking-tight" data-i18n="latestRecipes">Latest recipes</h2>
-        <span class="font-mono text-xs text-ink-600">[ newest {allModels.length} ]</span>
+        <span class="font-mono text-xs text-ink-600">[ <span data-i18n="newestLabel">newest</span> {allModels.length} ]</span>
       </div>
       {allModels.length > 8 && (
         <a href={`${basePrefix}browse`} class="text-xs font-mono text-accent-400 hover:text-accent-300 transition-colors" data-i18n="viewAll">
@@ -87,11 +86,10 @@ const baseSuffix = base.endsWith('/') ? base.slice(0, -1) : base;
     </div>
   </section>
 
-  <!-- Browse by Provider -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
     <div class="flex items-center gap-3 mb-6">
       <h2 class="font-display text-lg font-semibold text-ink-100 tracking-tight" data-i18n="browseByProvider">Browse by provider</h2>
-      <span class="font-mono text-xs text-ink-600">[ {providers.length} providers ]</span>
+      <span class="font-mono text-xs text-ink-600">[ {providers.length} <span data-i18n="providersLabel">providers</span> ]</span>
     </div>
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
       {providers.map((p) => (

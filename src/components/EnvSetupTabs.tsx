@@ -3,7 +3,7 @@ import { useLang } from '../lib/useLang';
 
 interface EnvSetupItem { content: string; }
 interface EnvSetup { pip?: EnvSetupItem; container?: EnvSetupItem; }
-interface EnvSetupTabsProps { envSetup: EnvSetup; }
+interface EnvSetupTabsProps { envSetupEn: EnvSetup; envSetupZh: EnvSetup; }
 
 function renderMarkdown(md: string): string {
   let html = md;
@@ -37,8 +37,9 @@ function renderMarkdown(md: string): string {
   return result.join('\n');
 }
 
-export default function EnvSetupTabs({ envSetup }: EnvSetupTabsProps) {
-  const { t } = useLang();
+export default function EnvSetupTabs({ envSetupEn, envSetupZh }: EnvSetupTabsProps) {
+  const { lang, t } = useLang();
+  const envSetup = lang === 'zh' ? envSetupZh : envSetupEn;
   const hasPip = !!envSetup.pip;
   const hasContainer = !!envSetup.container;
   const [tab, setTab] = useState<'pip' | 'container'>(hasPip ? 'pip' : 'container');

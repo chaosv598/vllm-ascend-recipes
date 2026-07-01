@@ -15,7 +15,8 @@ interface Scenario {
 }
 
 interface CascadeSelectorProps {
-  scenarios: Scenario[];
+  scenariosEn: Scenario[];
+  scenariosZh: Scenario[];
 }
 
 function renderMarkdown(md: string): string {
@@ -41,13 +42,13 @@ function renderMarkdown(md: string): string {
   for (const line of lines) {
     if (line.match(/^- (.+)$/)) {
       if (!inList) {
-        result.push('<ul class="list-none p-0 m-0 0 mb-4 space-y-1">');
+        result.push('<ul class="list-none p-0 m-0 mb-4 space-y-1">');
         inList = true;
       }
       const itemContent = line.replace(/^- (.+)$/, '$1')
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-accent-400 hover:text-accent-300 border-b border-accent-500/30">$1</a>')
         .replace(/`([^`]+)`/g, '<code>$1</code>');
-      result.push(`<li class="text-sm text-ink-400 pl-4 relative before:content-['▸'] before:absolute before:left-0 before:text-accent-500 before:text-xs before:top-0.5">${itemContent}</li>`);
+      result.push(`<li class="text-sm text-ink-400 pl-4 relative before:content-[\'▸\'] before:absolute before:left-0 before:text-accent-500 before:text-xs before:top-0.5">${itemContent}</li>`);
     } else {
       if (inList) {
         result.push('</ul>');
@@ -69,8 +70,9 @@ function renderMarkdown(md: string): string {
   return result.join('\n');
 }
 
-export default function CascadeSelector({ scenarios }: CascadeSelectorProps) {
-  const { t } = useLang();
+export default function CascadeSelector({ scenariosEn, scenariosZh }: CascadeSelectorProps) {
+  const { lang, t } = useLang();
+  const scenarios = lang === 'zh' ? scenariosZh : scenariosEn;
 
   const npus = useMemo(() => {
     const set = new Set<string>();
@@ -123,7 +125,6 @@ export default function CascadeSelector({ scenarios }: CascadeSelectorProps) {
   );
 
   const selectClass = "w-full px-3 py-2 text-xs font-mono rounded-lg border border-ink-800/60 bg-ink-900/40 text-ink-200 focus:outline-none focus:border-accent-500/40 focus:ring-1 focus:ring-accent-500/20 cursor-pointer transition-colors";
-
   const labelClass = "text-[10px] font-mono uppercase tracking-wider text-ink-600 mb-1.5 block";
 
   return (

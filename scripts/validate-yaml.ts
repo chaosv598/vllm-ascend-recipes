@@ -17,28 +17,32 @@ function findYamlFiles(dir: string): string[] {
   return results;
 }
 
-const modelsDir = new URL('../models/', import.meta.url).pathname;
-const files = findYamlFiles(modelsDir);
-
-if (files.length === 0) {
-  console.error('No YAML files found in models/');
-  process.exit(1);
-}
-
 let hasErrors = false;
 
-for (const file of files) {
+for (const lang of ['en', 'zh']) {
+  const langDir = new URL(`../models/${lang}/`, import.meta.url).pathname;
   try {
-    const raw = readFileSync(file, 'utf-8');
-    const data = parse(raw);
-    modelSchema.parse(data);
-    console.log(`  OK  ${file}`);
-  } catch (err) {
-    hasErrors = true;
-    console.error(` FAIL  ${file}`);
-    if (err instanceof Error) {
-      console.error(`       ${err.message}`);
+    const files = findYamlFiles(langDir);
+    if (files.length === 0) {
+      console.warn(` WARN  No YAML files found in models/${lang}/`);
+      continue;
     }
+    for (const file of files) {
+      try {
+        const raw = readFileSync(file, 'utf-8');
+        const data = parse(raw);
+        modelSchema.parse(data);
+        console.log(`  OK  [${lang}] ${file}`);
+      } catch (err) {
+        hasErrors = true;
+        console.error(` FAIL  [${lang}] ${file}`);
+        if (err instanceof Error) {
+          console.error(`       ${err.message}`);
+        }
+      }
+    }
+  } catch {
+    console.warn(` WARN  models/${lang}/ directory not found, skipping`);
   }
 }
 
@@ -46,5 +50,5 @@ if (hasErrors) {
   console.error('\n YAML validation failed. Fix the errors above.');
   process.exit(1);
 } else {
-  console.log(`\n All ${files.length} YAML files passed validation.`);
+  console.log('\n All YAML files passed validation.');
 }
