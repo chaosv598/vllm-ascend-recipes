@@ -1,0 +1,111 @@
+---
+interface Props {
+  markdown: string;
+}
+
+const { markdown } = Astro.props;
+
+function renderMarkdown(md: string): string {
+  let html = md;
+
+  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+    const escaped = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .trimEnd();
+    return `<div class="code-block group relative"><div class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"><button class="copy-btn px-2 py-1 text-[10px] font-mono rounded border border-ink-700 bg-ink-800 text-ink-400 hover:text-accent-400 hover:border-accent-500/30 transition-colors" data-code="${encodeURIComponent(code.trim())}">copy</button></div><pre><code class="language-${lang || 'bash'}">${escaped}</code></pre></div>`;
+  });
+
+  html = html.replace(/^### (.+)$/gm, '<h3 class="font-display text-base font-semibold mt-6 mb-2 text-ink-200">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 class="font-display text-lg font-semibold mt-6 mb-3 text-ink-100">$1</h2>');
+  html = html.replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-accent-500/40 pl-4 py-2 my-4 bg-accent-500/5 rounded-r text-sm text-ink-400">$1</blockquote>');
+
+  const lines = html.split('\n');
+  const result: string[] = [];
+  let inList = false;
+
+  for (const line of lines) {
+    if (line.match(/^- (.+)$/)) {
+      if (!inList) {
+        result.push('<ul class="list-none p-0 m-0 mb-4 space-y-1">');
+        inList = true;
+      }
+      const itemContent = line.replace(/^- (.+)$/, '$1')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-accent-400 hover:text-accent-300 border-b border-accent-500/30">$1</a>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+      result.push(`<li class="text-sm text-ink-400 pl-4 relative before:content-[\'▸\'] before:absolute before:left-0 before:text-accent-500 before:text-xs before:top-0.5">${itemContent}</li>`);
+    } else {
+      if (inList) {
+        result.push('</ul>');
+        inList = false;
+      }
+      if (line.trim() && !line.startsWith('<') && !line.startsWith('```') && !line.match(/^(<h[23]|<blockquote)/)) {
+        const processed = line
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-accent-400 hover:text-accent-300 border-b border-accent-500/30">$1</a>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\*\*(.+?)\*\*/g, '<strong class="text-ink-200 font-semibold">$1</strong>');
+        result.push(`<p class="text-sm text-ink-400 leading-relaxed mb-4">${processed}</p>`);
+      } else {
+        result.push(line);
+      }
+    }
+  }
+
+  if (inList) result.push('</ul>');
+  return result.join('\n');
+}
+
+const html = renderMarkdown(markdown);
+---
+
+<div class="prose" set:html={html} />
+
+<script is:inline define:vars={{ translations: { en: { btnCopy: 'Copy', btnCopied: 'Copied', btnCopyFailed: 'Failed' }, zh: { btnCopy: '复制', btnCopied: '已复制', btnCopyFailed: '复制失败' } } }}>
+  function getCopyLabel(key) {
+    const lang = localStorage.getItem('lang') || 'en';
+    return (translations[lang] || translations.en)[key];
+  }
+
+  function updateCopyLabels() {
+    document.querySelectorAll('.copy-btn:not([data-copying])').forEach((btn) => {
+      btn.textContent = getCopyLabel('btnCopy');
+    });
+  }
+
+  function attachCopyListeners() {
+    document.querySelectorAll('.copy-btn:not([data-attached])').forEach((btn) => {
+      btn.setAttribute('data-attached', 'true');
+      btn.textContent = getCopyLabel('btnCopy');
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget;
+        const code = decodeURIComponent(target.dataset.code || '');
+        target.setAttribute('data-copying', 'true');
+        try {
+          await navigator.clipboard.writeText(code);
+          target.textContent = getCopyLabel('btnCopied');
+          setTimeout(() => {
+            target.textContent = getCopyLabel('btnCopy');
+            target.removeAttribute('data-copying');
+          }, 2000);
+        } catch {
+          target.textContent = getCopyLabel('btnCopyFailed');
+          setTimeout(() => {
+            target.textContent = getCopyLabel('btnCopy');
+            target.removeAttribute('data-copying');
+          }, 2000);
+        }
+      });
+    });
+  }
+
+  attachCopyListeners();
+  updateCopyLabels();
+
+  window.addEventListener('langchange', () => {
+    updateCopyLabels();
+  });
+
+  const observer = new MutationObserver(() => attachCopyListeners());
+  observer.observe(document.body, { childList: true, subtree: true });
+</script>

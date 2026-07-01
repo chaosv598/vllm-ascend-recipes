@@ -1,0 +1,130 @@
+export type Lang = 'en' | 'zh';
+
+export const translations = {
+  en: {
+    siteTitle: 'vLLM-Ascend Recipes',
+    siteDescription: 'Deploy any model on Ascend NPUs — community-maintained vllm-ascend deployment recipes',
+    siteSubtitle: 'Community-maintained recipes for Atlas 800 A2/A3 and other Ascend NPU hardware',
+    navBrowse: 'Browse',
+    navDocs: 'Docs',
+    navGitHub: 'GitHub',
+    navJsonApi: 'JSON API',
+
+    heroTitle: 'vLLM-Ascend Recipes',
+    heroHighlight: 'Recipes',
+    heroDescription: 'Deploy any model on Ascend NPUs — pick a model, choose your hardware, copy the vllm serve command and run',
+    heroSubtitle: 'Community-maintained recipes for Atlas 800 A2/A3 and other Ascend NPU hardware',
+    heroBrowse: 'Browse all models',
+    heroGithub: 'GitHub',
+
+    latestRecipes: 'Latest recipes',
+    viewAll: 'View all',
+    browseByProvider: 'Browse by provider',
+    recipes: 'recipes',
+
+    browseTitle: 'Browse all recipes',
+    browseDescription: 'Filter by NPU type, architecture, modality, or search by model name.',
+    searchPlaceholder: 'Search by model name, provider...',
+    filterAllNpu: 'All NPUs',
+    filterAllArch: 'All architectures',
+    filterAllModality: 'All modalities',
+    totalModels: 'models',
+    noResults: 'No matching models found',
+
+    sectionOverview: 'Overview',
+    sectionWeightDownload: 'Weight Download',
+    sectionQuantization: 'Quantization',
+    sectionPrerequisites: 'Prerequisites',
+    sectionEnvSetup: 'Environment Setup',
+    sectionScenario: 'Deployment Scenarios',
+    sectionScenarioDescription: 'Select NPU type, precision, and deployment mode to view the corresponding deployment instructions.',
+    sectionPerformanceAccuracy: 'Performance (Accuracy)',
+    sectionPerformanceBenchmark: 'Performance (Benchmark)',
+    sectionReferences: 'References',
+
+    labelNpu: 'NPU Type',
+    labelPrecision: 'Precision / Quantization',
+    labelDeployment: 'Deployment Mode',
+    labelVerified: 'Verified',
+    labelUnverified: 'Unverified',
+
+    tabPip: 'pip Install',
+    tabContainer: 'Container Image',
+
+    btnCopy: 'Copy',
+    btnCopied: 'Copied',
+    btnCopyFailed: 'Failed',
+
+    editRecipe: 'Edit recipe',
+    updated: 'Updated',
+    home: 'Home',
+    goSource: 'Open',
+    step: 'Step',
+
+    footerText: 'Community-maintained vllm-ascend deployment recipes',
+  },
+  zh: {
+    siteTitle: 'vLLM-Ascend Recipes',
+    siteDescription: '在 Ascend NPU 上部署任何大模型 — 社区维护的 vllm-ascend 部署指南',
+    siteSubtitle: '社区维护的 vllm-ascend 部署指南，覆盖 Atlas 800 A2/A3 等 NPU 硬件',
+    navBrowse: '浏览',
+    navDocs: '文档',
+    navGitHub: 'GitHub',
+    navJsonApi: 'JSON API',
+
+    heroTitle: 'vLLM-Ascend',
+    heroHighlight: 'Recipes',
+    heroDescription: '在 Ascend NPU 上部署任何大模型 — 选模型、选硬件、复制 vllm serve 命令即可运行',
+    heroSubtitle: '社区维护的 vllm-ascend 部署指南，覆盖 Atlas 800 A2/A3 等 NPU 硬件',
+    heroBrowse: '浏览全部模型',
+    heroGithub: 'GitHub',
+
+    latestRecipes: '最新模型',
+    viewAll: '查看全部',
+    browseByProvider: '按提供商浏览',
+    recipes: '个',
+
+    browseTitle: '浏览全部模型',
+    browseDescription: '按 NPU 型号、架构、模态筛选，或搜索模型名称。',
+    searchPlaceholder: '搜索模型名称、提供商...',
+    filterAllNpu: '所有 NPU',
+    filterAllArch: '所有架构',
+    filterAllModality: '所有模态',
+    totalModels: '个模型',
+    noResults: '未找到匹配的模型',
+
+    sectionOverview: 'Overview',
+    sectionWeightDownload: '权重下载',
+    sectionQuantization: '量化',
+    sectionPrerequisites: 'Prerequisites',
+    sectionEnvSetup: '环境准备',
+    sectionScenario: '场景选择',
+    sectionScenarioDescription: '选择 NPU 型号、精度和部署模式，查看对应的部署命令。',
+    sectionPerformanceAccuracy: 'Performance (Accuracy)',
+    sectionPerformanceBenchmark: 'Performance (Benchmark)',
+    sectionReferences: 'References',
+
+    labelNpu: 'NPU 型号',
+    labelPrecision: '精度 / 量化',
+    labelDeployment: '部署模式',
+    labelVerified: '已验证',
+    labelUnverified: '未验证',
+
+    tabPip: 'pip 安装',
+    tabContainer: '容器镜像',
+
+    btnCopy: '复制',
+    btnCopied: '已复制',
+    btnCopyFailed: '复制失败',
+
+    editRecipe: '编辑此页',
+    updated: '更新于',
+    home: '首页',
+    goSource: '前往',
+    step: '',
+
+    footerText: '社区维护的 vllm-ascend 部署指南',
+  },
+} as const;
+
+export type TranslationKey = keyof typeof translations.en;

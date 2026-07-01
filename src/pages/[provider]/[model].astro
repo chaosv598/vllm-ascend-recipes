@@ -1,0 +1,202 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Tag from '../../components/Tag.astro';
+import MarkdownContent from '../../components/MarkdownContent.astro';
+import CascadeSelector from '../../components/CascadeSelector.tsx';
+import WeightDownloadTabs from '../../components/WeightDownloadTabs.tsx';
+import EnvSetupTabs from '../../components/EnvSetupTabs.tsx';
+import { getAllModels, formatContextLength, formatParameters } from '../../lib/models';
+import type { Model } from '../../lib/types';
+
+export const getStaticPaths = (async () => {
+  const models = await getAllModels();
+  return models.map((model) => ({
+    params: { provider: model._provider_slug, model: model._model_slug },
+    props: { model },
+  }));
+}) satisfies GetStaticPaths;
+
+interface Props { model: Model; }
+
+const { model } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const basePrefix = base.endsWith('/') ? base : base + '/';
+const baseSuffix = base.endsWith('/') ? base.slice(0, -1) : base;
+
+const editUrl = `https://github.com/vllm-ascend/vllm-ascend-recipes/edit/main/models/${model._provider_slug}/${model._model_slug}.yaml`;
+const hasQuantization = !!model.quantization;
+const hasPrerequisites = !!model.prerequisites && model.prerequisites.length > 0;
+const hasAccuracy = !!model.performance_accuracy;
+const hasBenchmark = !!model.performance_benchmark;
+const npus = [...new Set(model.scenarios.map((s) => s.npu))];
+const sectionTitle = "font-display text-lg font-semibold text-ink-50 tracking-tight mb-4";
+---
+
+<BaseLayout title={`${model.title} | vLLM-Ascend Recipes`} description={model.description}>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+    <!-- Breadcrumb + Title -->
+    <div class="mb-8">
+      <div class="flex items-center gap-1.5 text-xs font-mono text-ink-600 mb-4">
+        <a href={baseSuffix} class="hover:text-accent-400 transition-colors" data-i18n="home">~</a>
+        <span>/</span>
+        <a href={`${basePrefix}browse`} class="hover:text-accent-400 transition-colors" data-i18n="navBrowse">browse</a>
+        <span>/</span>
+        <span class="text-ink-500">{model._provider_slug}</span>
+      </div>
+
+      <h1 class="font-display text-3xl font-bold text-ink-50 tracking-tight mb-2">{model.title}</h1>
+      <p class="text-sm text-ink-400 max-w-2xl leading-relaxed mb-4">{model.description}</p>
+
+      <div class="flex flex-wrap gap-2 mb-4">
+        <Tag label={model.architecture === 'moe' ? 'MoE' : 'Dense'} color="purple" />
+        <Tag label={formatParameters(model.parameters, model.active_parameters)} color="accent" />
+        <Tag label={formatContextLength(model.context_length)} color="orange" />
+        <Tag label={model.modality} color="gray" />
+        {npus.map((npu) => <Tag label={npu} color="blue" />)}
+      </div>
+
+      <div class="flex items-center gap-3 text-[11px] font-mono text-ink-600">
+        <span><span data-i18n="updated">Updated</span>: {model.updated}</span>
+        <span>·</span>
+        <a href={editUrl} target="_blank" rel="noopener" class="hover:text-accent-400 transition-colors" data-i18n="editRecipe">
+          [ edit ]
+        </a>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <section class="py-8">
+      <h2 class={sectionTitle} data-i18n="sectionOverview">Overview</h2>
+      <MarkdownContent markdown={model.overview} />
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="py-8">
+      <h2 class={sectionTitle} data-i18n="sectionWeightDownload">Weight Download</h2>
+      <WeightDownloadTabs client:load downloads={model.weight_download} />
+    </section>
+
+    <div class="section-divider"></div>
+
+    {hasQuantization && (
+      <>
+        <section class="py-8">
+          <h2 class={sectionTitle} data-i18n="sectionQuantization">Quantization</h2>
+          <MarkdownContent markdown={model.quantization!.content} />
+        </section>
+        <div class="section-divider"></div>
+      </>
+    )}
+
+    {hasPrerequisites && (
+      <>
+        <section class="py-8">
+          <h2 class={sectionTitle} data-i18n="sectionPrerequisites">Prerequisites</h2>
+          <div class="space-y-6">
+            {model.prerequisites!.map((item) => (
+              <div>
+                <h3 class="font-display text-base font-semibold text-ink-200 mb-2">{item.title}</h3>
+                <MarkdownContent markdown={item.content} />
+              </div>
+            ))}
+          </div>
+        </section>
+        <div class="section-divider"></div>
+      </>
+    )}
+
+    <section class="py-8">
+      <h2 class={sectionTitle} data-i18n="sectionEnvSetup">Environment Setup</h2>
+      <EnvSetupTabs client:load envSetup={model.env_setup} />
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="py-8">
+      <h2 class={sectionTitle} data-i18n="sectionScenario">Deployment Scenarios</h2>
+      <p class="text-xs text-ink-500 mb-6 font-mono" data-i18n="sectionScenarioDescription">
+        Select NPU type, precision, and deployment mode to view the corresponding deployment instructions.
+      </p>
+      <CascadeSelector client:load scenarios={model.scenarios} />
+    </section>
+
+    <div class="section-divider"></div>
+
+    {hasAccuracy && (
+      <>
+        <section class="py-8">
+          <h2 class={sectionTitle} data-i18n="sectionPerformanceAccuracy">Performance (Accuracy)</h2>
+          <div class="overflow-x-auto rounded-lg border border-ink-800/60">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-ink-800/60 bg-ink-900/40">
+                  {model.performance_accuracy!.headers.map((h) => (
+                    <th class="text-left py-2.5 px-4 font-mono text-xs font-medium text-accent-400 uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {model.performance_accuracy!.rows.map((row) => (
+                  <tr class="border-b border-ink-800/40 last:border-0 hover:bg-ink-900/30 transition-colors">
+                    {row.map((cell) => (
+                      <td class="py-2.5 px-4 text-ink-400 font-mono text-xs">{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <div class="section-divider"></div>
+      </>
+    )}
+
+    {hasBenchmark && (
+      <>
+        <section class="py-8">
+          <h2 class={sectionTitle} data-i18n="sectionPerformanceBenchmark">Performance (Benchmark)</h2>
+          <div class="overflow-x-auto rounded-lg border border-ink-800/60">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-ink-800/60 bg-ink-900/40">
+                  {model.performance_benchmark!.headers.map((h) => (
+                    <th class="text-left py-2.5 px-4 font-mono text-xs font-medium text-accent-400 uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {model.performance_benchmark!.rows.map((row) => (
+                  <tr class="border-b border-ink-800/40 last:border-0 hover:bg-ink-900/30 transition-colors">
+                    {row.map((cell) => (
+                      <td class="py-2.5 px-4 text-ink-400 font-mono text-xs">{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <div class="section-divider"></div>
+      </>
+    )}
+
+    <section class="py-8">
+      <h2 class={sectionTitle} data-i18n="sectionReferences">References</h2>
+      <ul class="space-y-1.5">
+        {model.references.map((ref) => (
+          <li>
+            <a href={ref.url} target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm text-accent-400 hover:text-accent-300 transition-colors font-mono">
+              <span class="text-ink-600">→</span>
+              {ref.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+  </div>
+</BaseLayout>
