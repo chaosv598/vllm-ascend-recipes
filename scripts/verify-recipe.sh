@@ -79,16 +79,27 @@ for s in scenarios:
         import re
         content = re.sub(r'%%CONFIG:\w+%%', '', content)
         content = re.sub(r'%%/CONFIG:\w+%%', '', content)
-        # Find vllm serve command (first line of bash block)
-        for line in content.split('\n'):
-            line = line.strip()
-            if 'vllm serve' in line:
+        # Find vllm serve command, including multi-line continuation
+        lines = content.split('\n')
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            if 'vllm serve' in line_stripped:
+                cmd_parts = [line_stripped.rstrip('\\').strip()]
+                # Collect continuation lines
+                for j in range(i + 1, len(lines)):
+                    next_line = lines[j].strip()
+                    if not next_line:
+                        continue
+                    cmd_parts.append(next_line.rstrip('\\').strip())
+                    if not next_line.endswith('\\'):
+                        break
+                full_cmd = ' '.join(cmd_parts)
                 commands.append({
                     'npu': s.get('npu', ''),
                     'precision': s.get('precision', ''),
                     'deployment': s.get('deployment', ''),
                     'case': s.get('case', ''),
-                    'command': line,
+                    'command': full_cmd,
                 })
                 break
 
@@ -125,15 +136,27 @@ log_info "Hardware: $(echo "$RECIPE_INFO" | python3 -c "import sys,json; print(j
 
 # Install vllm-ascend
 PIP_SETUP=$(echo "$RECIPE_INFO" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('pip_setup',''))")
+MIN_VERSION=$(echo "$RECIPE_INFO" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('min_vllm_version',''))")
+
+if command -v vllm &>/dev/null; then
+  log_info "vllm already installed"
+else
+  log_info "Installing vllm-ascend..."
+  if [[ -n "$MIN_VERSION" ]]; then
+    uv pip install "vllm-ascend>=$MIN_VERSION" || pip install "vllm-ascend>=$MIN_VERSION"
+  else
+    uv pip install vllm-ascend || pip install vllm-ascend
+  fi
+  log_info "vllm-ascend installed successfully"
+fi
+
 if [[ -n "$PIP_SETUP" ]]; then
-  log_info "Installing vllm-ascend per recipe instructions..."
+  log_info "Running additional recipe install commands..."
   echo "$PIP_SETUP" | grep -E 'pip\s+install|uv\s+pip\s+install' | while read -r cmd; do
     cmd=$(echo "$cmd" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     log_info "  Running: $cmd"
     eval "$cmd" || log_warn "  Install command returned non-zero (may be non-critical)"
   done || true
-else
-  log_warn "No pip install commands found in recipe, skipping installation"
 fi
 
 # Verify each scenario
