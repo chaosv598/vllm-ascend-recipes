@@ -127,12 +127,13 @@ log_info "Hardware: $(echo "$RECIPE_INFO" | python3 -c "import sys,json; print(j
 PIP_SETUP=$(echo "$RECIPE_INFO" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('pip_setup',''))")
 if [[ -n "$PIP_SETUP" ]]; then
   log_info "Installing vllm-ascend per recipe instructions..."
-  # Extract pip install commands from content
   echo "$PIP_SETUP" | grep -E 'pip\s+install|uv\s+pip\s+install' | while read -r cmd; do
     cmd=$(echo "$cmd" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     log_info "  Running: $cmd"
     eval "$cmd" || log_warn "  Install command returned non-zero (may be non-critical)"
-  done
+  done || true
+else
+  log_warn "No pip install commands found in recipe, skipping installation"
 fi
 
 # Verify each scenario
