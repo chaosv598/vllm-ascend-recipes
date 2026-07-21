@@ -61,12 +61,12 @@ jobs:
           CHANGED=$(git diff --name-only origin/main...HEAD -- models/ | grep '\.yaml$\|\.yml$' | grep '^models/en/' || true)
           if [ -n "$CHANGED" ]; then
             COUNT=$(echo "$CHANGED" | wc -l)
-            echo "count=$COUNT" >> $GITHUB_OUTPUT
+            echo "count=$COUNT" >> "$GITHUB_OUTPUT"
             FILES=$(echo "$CHANGED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            echo "files=$FILES" >> $GITHUB_OUTPUT
+            echo "files=$FILES" >> "$GITHUB_OUTPUT"
           else
-            echo "count=0" >> $GITHUB_OUTPUT
-            echo "files=[]" >> $GITHUB_OUTPUT
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "files=[]" >> "$GITHUB_OUTPUT"
           fi
 
   # ============================================================

@@ -71,14 +71,7 @@ jobs:
           fi
 
           for file in $RECIPE_FILES; do
-            HW=$(python3 -c "
-import yaml, sys
-with open('$file') as f:
-    d = yaml.safe_load(f)
-hw = d.get('meta',{}).get('hardware',{})
-a2 = hw.get('atlas_800_a2','')
-print(a2)
-" 2>/dev/null || echo "")
+            HW=$(python3 -c "import yaml, sys; d=yaml.safe_load(open('$file')); hw=d.get('meta',{}).get('hardware',{}); print(hw.get('atlas_800_a2',''))" 2>/dev/null || echo "")
 
             [ "$HW" = "unsupported" ] && continue
 
