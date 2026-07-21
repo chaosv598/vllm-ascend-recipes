@@ -75,31 +75,25 @@ for s in scenarios:
     steps = s.get('steps', [])
     for step in steps:
         content = step.get('content', '')
-        # Remove %%CONFIG:...%% markers
         import re
-        content = re.sub(r'%%CONFIG:\w+%%', '', content)
-        content = re.sub(r'%%/CONFIG:\w+%%', '', content)
-        # Find vllm serve command, including multi-line continuation
-        lines = content.split('\n')
-        for i, line in enumerate(lines):
+        # Extract bash code block content
+        m = re.search(r'```bash\s*\n(.*?)```', content, re.DOTALL)
+        if not m:
+            continue
+        bash_content = m.group(1)
+        # Remove %%CONFIG:...%% markers
+        bash_content = re.sub(r'%%CONFIG:\w+%%', '', bash_content)
+        bash_content = re.sub(r'%%/CONFIG:\w+%%', '', bash_content)
+        # Find vllm serve line
+        for line in bash_content.split('\n'):
             line_stripped = line.strip()
             if 'vllm serve' in line_stripped:
-                cmd_parts = [line_stripped.rstrip('\\').strip()]
-                # Collect continuation lines
-                for j in range(i + 1, len(lines)):
-                    next_line = lines[j].strip()
-                    if not next_line:
-                        continue
-                    cmd_parts.append(next_line.rstrip('\\').strip())
-                    if not next_line.endswith('\\'):
-                        break
-                full_cmd = ' '.join(cmd_parts)
                 commands.append({
                     'npu': s.get('npu', ''),
                     'precision': s.get('precision', ''),
                     'deployment': s.get('deployment', ''),
                     'case': s.get('case', ''),
-                    'command': full_cmd,
+                    'command': bash_content.strip(),
                 })
                 break
 
@@ -188,11 +182,16 @@ for i, s in enumerate(info.get('scenarios',[])):
   fi
 
   log_info "--- Scenario [$idx]: $npu / $precision / $deployment / $case_name ---"
-  log_info "  Command: $cmd"
 
-  # Start vllm serve in background
+  # Write command to temp script to handle multiline/quotes properly
+  VLLM_SCRIPT="/tmp/vllm_serve_${idx}.sh"
+  echo "#!/usr/bin/env bash" > "$VLLM_SCRIPT"
+  echo "set -euo pipefail" >> "$VLLM_SCRIPT"
+  echo "$cmd" >> "$VLLM_SCRIPT"
+  chmod +x "$VLLM_SCRIPT"
+
   log_info "  Starting vllm serve..."
-  eval "$cmd" &
+  bash "$VLLM_SCRIPT" &
   SERVE_PID=$!
 
   # Wait for /v1/models to become ready
