@@ -208,7 +208,7 @@ for i, s in enumerate(info.get('scenarios',[])):
   VLLM_SCRIPT="/tmp/vllm_serve_${idx}.sh"
   cat > "$VLLM_SCRIPT" <<'SCRIPT_HEREDOC'
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 . /usr/local/Ascend/ascend-toolkit/set_env.sh 2>/dev/null || true
 export PATH="/usr/local/bin:/root/.local/bin:$PATH"
 SCRIPT_HEREDOC
