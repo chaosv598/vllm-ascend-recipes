@@ -74,33 +74,35 @@ container_content = env_setup.get('container', {}).get(hw_to_container.get(hw_ke
 # Extract scenarios
 scenarios = data.get('scenarios', [])
 commands = []
+import re
 for s in scenarios:
-    steps = s.get('steps', [])
-    for step in steps:
+    serve_cmd = ''
+    verify_cmds = []
+    for step in s.get('steps', []):
         content = step.get('content', '')
-        import re
-        # Extract bash/shell code block content
         m = re.search(r'```(?:bash|shell)\s*\n(.*?)```', content, re.DOTALL)
         if not m:
             import sys
-            print(f"DEBUG: No bash block found in step '{step.get('title','')}', content[:200]={content[:200]}", file=sys.stderr)
+            print(f"DEBUG: No bash block found in step '{step.get('title','')}', scenario '{s.get('npu','')}/{s.get('precision','')}', content[:150]={content[:150]}", file=sys.stderr)
             continue
         bash_content = m.group(1)
         # Remove %%CONFIG:...%% markers
         bash_content = re.sub(r'%%CONFIG:\w+%%', '', bash_content)
         bash_content = re.sub(r'%%/CONFIG:\w+%%', '', bash_content)
-        # Find vllm serve line
-        for line in bash_content.split('\n'):
-            line_stripped = line.strip()
-            if 'vllm serve' in line_stripped:
-                commands.append({
-                    'npu': s.get('npu', ''),
-                    'precision': s.get('precision', ''),
-                    'deployment': s.get('deployment', ''),
-                    'case': s.get('case', ''),
-                    'command': bash_content.strip(),
-                })
-                break
+        if 'vllm serve' in bash_content:
+            serve_cmd = bash_content.strip()
+        elif 'curl' in bash_content:
+            verify_cmds.append(bash_content.strip())
+    
+    if serve_cmd:
+        commands.append({
+            'npu': s.get('npu', ''),
+            'precision': s.get('precision', ''),
+            'deployment': s.get('deployment', ''),
+            'case': s.get('case', ''),
+            'serve_cmd': serve_cmd,
+            'verify_cmds': verify_cmds,
+        })
 
 # Find minimum vllm version
 min_ver = data.get('model', {}).get('min_vllm_version', '')
@@ -179,24 +181,30 @@ if [[ "${CI_RUNNER_SMOKE:-0}" == "1" ]]; then
 fi
 
 echo "$RECIPE_INFO" | $PYTHON -c "
-import sys,json
+import sys,json,base64
 info = json.loads(sys.stdin.read())
 for i, s in enumerate(info.get('scenarios',[])):
-    print(f'{i}|{s[\"npu\"]}|{s[\"precision\"]}|{s[\"deployment\"]}|{s[\"case\"]}')
-    print(s['command'])
-    print('---END---')
-" | while IFS='|' read -r idx npu precision deployment case_name; do
+    serve_b64 = base64.b64encode(s.get('serve_cmd','').encode()).decode()
+    verify_b64 = base64.b64encode('\n'.join(s.get('verify_cmds',[])).encode()).decode()
+    print(f'{i}|{s[\"npu\"]}|{s[\"precision\"]}|{s[\"deployment\"]}|{s[\"case\"]}|{serve_b64}|{verify_b64}')
+" | while IFS='|' read -r idx npu precision deployment case_name serve_b64 verify_b64; do
   [ -z "$idx" ] && continue
-  IFS= read -r cmd
-  read -r separator  # consume ---END---
 
   if [[ "${CI_RUNNER_SMOKE:-0}" == "1" ]] && [[ "$idx" != "0" ]]; then
     continue
   fi
 
+  SERVE_CMD=$(echo "$serve_b64" | base64 -d 2>/dev/null || echo "")
+  VERIFY_CMD=$(echo "$verify_b64" | base64 -d 2>/dev/null || echo "")
+
   log_info "--- Scenario [$idx]: $npu / $precision / $deployment / $case_name ---"
 
-  # Write command to temp script to handle multiline/quotes properly
+  if [[ -z "$SERVE_CMD" ]]; then
+    log_warn "  No vllm serve command found, skipping"
+    SKIPPED=1
+    continue
+  fi
+
   VLLM_SCRIPT="/tmp/vllm_serve_${idx}.sh"
   cat > "$VLLM_SCRIPT" <<'SCRIPT_HEREDOC'
 #!/usr/bin/env bash
@@ -204,7 +212,7 @@ set -euo pipefail
 . /usr/local/Ascend/ascend-toolkit/set_env.sh 2>/dev/null || true
 export PATH="/usr/local/bin:/root/.local/bin:$PATH"
 SCRIPT_HEREDOC
-  echo "$cmd" >> "$VLLM_SCRIPT"
+  echo "$SERVE_CMD" >> "$VLLM_SCRIPT"
   chmod +x "$VLLM_SCRIPT"
 
   log_info "  Starting vllm serve..."
@@ -241,21 +249,22 @@ SCRIPT_HEREDOC
     continue
   fi
 
-  # Send a test inference request
-  log_info "  Sending test inference request..."
-  INFER_RESP=$(curl -sf -X POST http://localhost:8000/v1/chat/completions \
-    -H "Content-Type: application/json" \
-    -d '{"model":"'"$MODEL_ID"'","messages":[{"role":"user","content":"Hello, reply with just the word OK."}],"max_tokens":10}' \
-    2>&1 || true)
-
-  if echo "$INFER_RESP" | grep -qi '"error"'; then
-    log_error "  Inference request returned error"
-    STATUS=1
-  elif [[ -z "$INFER_RESP" ]]; then
-    log_error "  Inference request returned empty response"
-    STATUS=1
-  else
-    log_info "  Inference response received"
+  # Run recipe curl verification commands
+  if [[ -n "$VERIFY_CMD" ]]; then
+    log_info "  Running recipe verification commands..."
+    echo "$VERIFY_CMD" | while IFS= read -r curl_cmd; do
+      [ -z "$curl_cmd" ] && continue
+      # Replace <node0_ip> with localhost, remove backslash continuations
+      curl_cmd=$(echo "$curl_cmd" | sed 's/<node0_ip>/localhost/g' | sed 's/\\$//' | tr '\n' ' ')
+      log_info "  Running: $curl_cmd"
+      RESP=$(eval "$curl_cmd" 2>&1 || echo "CURL_FAILED")
+      if echo "$RESP" | grep -qi "CURL_FAILED\|error"; then
+        log_error "  Recipe curl verification FAILED"
+        STATUS=1
+      else
+        log_info "  Recipe curl verification PASSED"
+      fi
+    done || true
   fi
 
   # Kill the server
