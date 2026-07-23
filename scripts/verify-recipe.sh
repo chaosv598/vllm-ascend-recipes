@@ -181,21 +181,29 @@ if [[ "${CI_RUNNER_SMOKE:-0}" == "1" ]]; then
 fi
 
 echo "$RECIPE_INFO" | $PYTHON -c "
-import sys,json,base64
+import sys,json,os
 info = json.loads(sys.stdin.read())
 for i, s in enumerate(info.get('scenarios',[])):
-    serve_b64 = base64.b64encode(s.get('serve_cmd','').encode()).decode()
-    verify_b64 = base64.b64encode('\n'.join(s.get('verify_cmds',[])).encode()).decode()
-    print(f'{i}|{s[\"npu\"]}|{s[\"precision\"]}|{s[\"deployment\"]}|{s[\"case\"]}|{serve_b64}|{verify_b64}')
-" | while IFS='|' read -r idx npu precision deployment case_name serve_b64 verify_b64; do
+    serve = s.get('serve_cmd','')
+    verify = '\n'.join(s.get('verify_cmds',[]))
+    # Write to temp files
+    with open(f'/tmp/scenario_{i}_serve.sh', 'w') as f:
+        f.write(serve)
+    with open(f'/tmp/scenario_{i}_verify.sh', 'w') as f:
+        f.write(verify)
+    # Print metadata line
+    print(f'{i}|{s[\"npu\"]}|{s[\"precision\"]}|{s[\"deployment\"]}|{s[\"case\"]}')
+print('__END__')
+" | while IFS='|' read -r idx npu precision deployment case_name; do
+  [ "$idx" = "__END__" ] && break
   [ -z "$idx" ] && continue
 
   if [[ "${CI_RUNNER_SMOKE:-0}" == "1" ]] && [[ "$idx" != "0" ]]; then
     continue
   fi
 
-  SERVE_CMD=$(echo "$serve_b64" | base64 -d 2>/dev/null || echo "")
-  VERIFY_CMD=$(echo "$verify_b64" | base64 -d 2>/dev/null || echo "")
+  SERVE_CMD=$(cat "/tmp/scenario_${idx}_serve.sh" 2>/dev/null || echo "")
+  VERIFY_CMD=$(cat "/tmp/scenario_${idx}_verify.sh" 2>/dev/null || echo "")
 
   log_info "--- Scenario [$idx]: $npu / $precision / $deployment / $case_name ---"
   log_info "  Serve command:"
