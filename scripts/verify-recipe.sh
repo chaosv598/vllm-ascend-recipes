@@ -143,13 +143,22 @@ if command -v vllm &>/dev/null; then
   log_info "vllm already installed: $(vllm --version 2>&1 || true)"
 else
   log_info "Installing vllm + vllm-ascend..."
-  if [[ -n "$MIN_VERSION" ]]; then
-    uv pip install "vllm-ascend>=$MIN_VERSION" || pip install "vllm-ascend>=$MIN_VERSION"
-  else
-    uv pip install vllm vllm-ascend || pip install vllm vllm-ascend
-  fi
+  uv pip install vllm vllm-ascend || pip install vllm vllm-ascend
   hash -r 2>/dev/null || true
   export PATH="/usr/local/bin:/root/.local/bin:$PATH"
+  # Debug: check what's available
+  log_info "vllm binary: $(which vllm 2>&1 || echo 'not in PATH')"
+  log_info "Python vllm: $($PYTHON -c 'import vllm; print(vllm.__version__)' 2>&1 || echo 'import failed')"
+  if ! command -v vllm &>/dev/null; then
+    log_error "vllm CLI not found after install, trying python3 -m vllm..."
+    if $PYTHON -m vllm --version 2>/dev/null; then
+      log_info "Creating vllm wrapper script"
+      echo '#!/usr/bin/env bash' > /usr/local/bin/vllm
+      echo 'exec '"$PYTHON"' -m vllm "$@"' >> /usr/local/bin/vllm
+      chmod +x /usr/local/bin/vllm
+      hash -r
+    fi
+  fi
   if command -v vllm &>/dev/null; then
     log_info "vllm installed: $(vllm --version 2>&1 || true)"
   else
