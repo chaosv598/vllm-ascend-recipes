@@ -198,6 +198,8 @@ for i, s in enumerate(info.get('scenarios',[])):
   VERIFY_CMD=$(echo "$verify_b64" | base64 -d 2>/dev/null || echo "")
 
   log_info "--- Scenario [$idx]: $npu / $precision / $deployment / $case_name ---"
+  log_info "  Serve command:"
+  echo "$SERVE_CMD" | while IFS= read -r line; do log_info "    $line"; done
 
   if [[ -z "$SERVE_CMD" ]]; then
     log_warn "  No vllm serve command found, skipping"
