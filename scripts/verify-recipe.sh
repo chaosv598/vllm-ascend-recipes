@@ -89,11 +89,6 @@ for s in scenarios:
         # Remove %%CONFIG:...%% markers (key may contain hyphens)
         bash_content = re.sub(r'%%CONFIG:[^%]+%%', '', bash_content)
         bash_content = re.sub(r'%%/CONFIG:[^%]+%%', '', bash_content)
-        # Remove deepseek_v4 args not supported by older vllm versions
-        bash_content = re.sub(r'.*--tokenizer-mode\s+deepseek_v4.*\n?', '', bash_content)
-        bash_content = re.sub(r'.*--tool-call-parser\s+deepseek_v4.*\n?', '', bash_content)
-        bash_content = re.sub(r'.*--reasoning-parser\s+deepseek_v4.*\n?', '', bash_content)
-        bash_content = re.sub(r'.*--enable-auto-tool-choice.*\n?', '', bash_content)
         # Fix model path: recipe uses vllm-ascend dir, actual weights under Eco-Tech
         bash_content = re.sub(r'vllm-ascend/DeepSeek-V4-Flash-w8a8-mtp', 'Eco-Tech/DeepSeek-V4-fLASH-W8A8-MTP', bash_content)
         if 'vllm serve' in bash_content:
