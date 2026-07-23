@@ -179,3 +179,4 @@ jobs:
       runner: linux-aarch64-a2b4-8
       recipe_files: ${{ needs.detect.outputs.recipe_files }}
       trigger_type: pr
+
