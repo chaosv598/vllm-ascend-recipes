@@ -86,9 +86,9 @@ for s in scenarios:
             print(f"DEBUG: No bash block found in step '{step.get('title','')}', scenario '{s.get('npu','')}/{s.get('precision','')}', content[:150]={content[:150]}", file=sys.stderr)
             continue
         bash_content = m.group(1)
-        # Remove %%CONFIG:...%% markers
-        bash_content = re.sub(r'%%CONFIG:\w+%%', '', bash_content)
-        bash_content = re.sub(r'%%/CONFIG:\w+%%', '', bash_content)
+        # Remove %%CONFIG:...%% markers (key may contain hyphens)
+        bash_content = re.sub(r'%%CONFIG:[^%]+%%', '', bash_content)
+        bash_content = re.sub(r'%%/CONFIG:[^%]+%%', '', bash_content)
         # Remove deepseek_v4 args not supported by older vllm versions
         bash_content = re.sub(r'.*--tokenizer-mode\s+deepseek_v4.*\n?', '', bash_content)
         bash_content = re.sub(r'.*--tool-call-parser\s+deepseek_v4.*\n?', '', bash_content)
