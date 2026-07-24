@@ -96,7 +96,7 @@ for s in scenarios:
         bash_content = re.sub(r'%%CONFIG:[^%]+%%', '', bash_content)
         bash_content = re.sub(r'%%/CONFIG:[^%]+%%', '', bash_content)
         # Replace placeholder model paths with actual weights
-        bash_content = bash_content.replace('your_model_path', '/root/.cache/modelscope/hub/models/Qwen/Qwen3-30B-A3B-w8a8')
+        bash_content = bash_content.replace('your_model_path', '/root/.cache/modelscope/hub/models/Qwen/Qwen3-30B-A3B')
         bash_content = bash_content.replace('your_eagle3_model_path', 'SKIP')
         # Remove speculative-config lines that reference placeholder paths
         bash_content = re.sub(r'.*--speculative-config.*your_eagle3.*\n?', '', bash_content)
