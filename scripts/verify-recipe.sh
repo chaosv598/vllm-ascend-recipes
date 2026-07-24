@@ -96,9 +96,11 @@ for s in scenarios:
         bash_content = re.sub(r'%%CONFIG:[^%]+%%', '', bash_content)
         bash_content = re.sub(r'%%/CONFIG:[^%]+%%', '', bash_content)
         # Replace placeholder model paths with actual weights
-        bash_content = bash_content.replace('your_model_path', '/root/.cache/modelscope/hub/models/Qwen/Qwen3-30B-A3B')
+        bash_content = bash_content.replace('your_model_path', '/root/.cache/modelscope/hub/models/Eco-Tech/Qwen3-30B-A3B-w8a8')
         # Remove speculative-config lines (contain placeholder paths)
         bash_content = re.sub(r'.*--speculative-config.*\n?', '', bash_content)
+        # Remove --quantization ascend for non-ModelSlim w8a8 weights
+        bash_content = re.sub(r'.*--quantization\s+ascend.*\n?', '', bash_content)
         if 'vllm serve' in bash_content:
             serve_cmd = bash_content.strip()
         elif 'curl' in bash_content:
