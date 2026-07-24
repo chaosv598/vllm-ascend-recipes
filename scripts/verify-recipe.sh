@@ -71,10 +71,19 @@ pip_content = env_setup.get('pip', {}).get('content', '')
 hw_to_container = {'atlas_800_a2': 'A2', 'atlas_800_a3': 'A3'}
 container_content = env_setup.get('container', {}).get(hw_to_container.get(hw_key, 'A2'), {}).get('content', '')
 
+# Extract global verification (curl commands shared across scenarios)
+verification = data.get('verification', '')
+global_verify_cmd = ''
+import re
+m = re.search(r'```(?:bash|shell)\s*\n(.*?)```', verification, re.DOTALL)
+if m:
+    global_verify_cmd = m.group(1).strip()
+    # Replace <node0_ip> etc
+    global_verify_cmd = global_verify_cmd.replace('<node0_ip>', 'localhost')
+
 # Extract scenarios
 scenarios = data.get('scenarios', [])
 commands = []
-import re
 for s in scenarios:
     serve_cmd = ''
     verify_cmds = []
@@ -105,6 +114,10 @@ for s in scenarios:
             verify_cmds.append(bash_content.strip())
     
     if serve_cmd:
+        # Append global verification curl commands
+        if global_verify_cmd:
+            verify_cmds.append(global_verify_cmd)
+        
         commands.append({
             'npu': s.get('npu', ''),
             'precision': s.get('precision', ''),
