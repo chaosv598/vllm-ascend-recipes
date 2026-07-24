@@ -78,11 +78,11 @@ import re
 for s in scenarios:
     serve_cmd = ''
     verify_cmds = []
-        # Skip A3 scenarios on A2 hardware
-        if hw_key == 'atlas_800_a2' and 'A3' in s.get('npu', ''):
-            import sys
-            print(f"DEBUG: Skipping A3 scenario '{s.get('npu','')}/{s.get('precision','')}' on A2 hardware", file=sys.stderr)
-            continue
+    # Skip A3 scenarios on A2 hardware
+    if hw_key == 'atlas_800_a2' and 'A3' in s.get('npu', ''):
+        import sys
+        print(f"DEBUG: Skipping A3 scenario '{s.get('npu','')}/{s.get('precision','')}' on A2 hardware", file=sys.stderr)
+        continue
 
     for step in s.get('steps', []):
         content = step.get('content', '')
