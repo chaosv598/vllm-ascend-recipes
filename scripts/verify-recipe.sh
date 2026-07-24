@@ -89,8 +89,6 @@ for s in scenarios:
         # Remove %%CONFIG:...%% markers (key may contain hyphens)
         bash_content = re.sub(r'%%CONFIG:[^%]+%%', '', bash_content)
         bash_content = re.sub(r'%%/CONFIG:[^%]+%%', '', bash_content)
-        # Fix model path: recipe uses vllm-ascend dir, actual weights under Eco-Tech
-        bash_content = re.sub(r'vllm-ascend/DeepSeek-V4-Flash-w8a8-mtp', 'Eco-Tech/DeepSeek-V4-fLASH-W8A8-MTP', bash_content)
         if 'vllm serve' in bash_content:
             serve_cmd = bash_content.strip()
         elif 'curl' in bash_content:
