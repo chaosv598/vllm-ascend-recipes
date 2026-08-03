@@ -148,7 +148,15 @@ addToc('reference', 'sectionMoreInfo');
               color="accent"
             />
             <Tag label={formatContextLength(model.model.context_length)} color="orange" />
-            <Tag label={model.model.modality} color="gray" />
+            {
+              // Hide the legacy modality chip when tasks[] is present (they
+              // would render the same label twice). tasks is the upstream
+              // convention; modality is the pre-alignment alias kept only so
+              // existing recipes don't break validation.
+              !(model.meta.tasks && model.meta.tasks.length > 0) && (
+                <Tag label={model.model.modality} color="gray" />
+              )
+            }
             {
               model.model.min_vllm_version && (
                 <Tag label={`vLLM ${model.model.min_vllm_version}`} color="blue" />
