@@ -110,7 +110,8 @@ jobs:
               echo "files=[]"
               echo "a5_count=0"
               echo "a5_files=[]"
-            } >> "$GITHUB_OUTPUT"            echo "No models/en/ recipe files changed"
+            } >> "$GITHUB_OUTPUT"
+            echo "No models/en/ recipe files changed"
           fi
 
   # ============================================================
