@@ -271,6 +271,27 @@ class RecipeWorkflowLoopTests(unittest.TestCase):
 
 
 class RecipeArtifactCompatibilityTests(unittest.TestCase):
+    def test_single_flat_download_matches_its_selected_hardware_job(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "input"
+            artifact.mkdir()
+            recipe = "models/en/New/model.yaml"
+            params = {"recipe_path": recipe, "hw_key": "atlas_800_a2",
+                      "image": "test:a2", "scenarios": [{"npu": "A2"}]}
+            (artifact / "model.params.json").write_text(json.dumps(params), encoding="utf-8")
+            (artifact / "model.status").write_text("pass", encoding="utf-8")
+            jobs = [{"job_id": family + "-test", "hardware_key": key,
+                     "recipe_files": json.dumps([recipe]), "image": "test:" + family}
+                    for family, key in [("a2", "atlas_800_a2"), ("a3", "atlas_800_a3")]]
+            collect(artifact, root / "one", expected_plan={"include": jobs[:1]})
+            self.assertEqual((root / "one/model.status").read_text().strip(), "pass")
+            collect(artifact, root / "two", expected_plan={"include": jobs})
+            self.assertEqual((root / "two/model.status").read_text().strip(), "unknown")
+            runs = json.loads((root / "two/model.params.json").read_text())["hardware_runs"]
+            self.assertEqual([(run["hw_key"], run["status"]) for run in runs],
+                             [("atlas_800_a2", "pass"), ("atlas_800_a3", "unknown")])
+
     def test_missing_selected_hardware_cannot_be_hidden_by_a_sibling_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

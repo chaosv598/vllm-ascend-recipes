@@ -139,7 +139,7 @@ class MultiNodeWorkflowTests(unittest.TestCase):
             "TRIGGER": "${{ github.event_name == 'schedule' && 'nightly' || 'manual' }}",
             "TARGET_IDS": "${{ inputs.target_ids }}",
         })
-        upload = next(step for step in steps if step.get("uses") == "actions/upload-artifact@v4")
+        upload = next(step for step in steps if step.get("uses", "").startswith("actions/upload-artifact@"))
         self.assertLess(steps.index(plan), steps.index(upload))
         self.assertNotIn("if", upload)  # Empty selections still publish a manifest.
         self.assertEqual(upload["with"]["name"],

@@ -74,12 +74,12 @@ jobs:
       # workflow_run fires in the default-branch context; HEAD == origin/main
       # here. We commit + push status data back to main.
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
       - name: Download run-params artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: recipe-verify-results-${{ github.event.workflow_run.id }}
           path: results/
@@ -88,7 +88,7 @@ jobs:
         continue-on-error: true
 
       - name: Download configuration verification results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: verification-target-results-${{ github.event.workflow_run.id }}-*
           path: target-results/

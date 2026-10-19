@@ -95,7 +95,7 @@ jobs:
           cat /usr/local/Ascend/ascend-toolkit/latest/"$(uname -i)"-linux/ascend_toolkit_install.info
 
       - name: Checkout recipes repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: ./recipes
 
@@ -171,7 +171,7 @@ jobs:
 
       - name: Upload verification logs (PR)
         if: ${{ always() && inputs.trigger_type == 'pr' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: recipe-verify-logs-${{ github.run_id }}-${{ inputs.plan_id || inputs.hardware_key }}
           path: /tmp/verify-logs/
@@ -186,7 +186,7 @@ jobs:
         # GitHub Artifact Blob uploads intermittently stall on self-hosted
         # A2 runners. OBS below remains the nightly persistence path.
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: recipe-verify-results-${{ github.run_id }}-${{ inputs.plan_id || inputs.hardware_key }}
           path: /tmp/verify-results/

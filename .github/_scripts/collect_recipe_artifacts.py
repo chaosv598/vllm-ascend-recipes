@@ -38,7 +38,12 @@ def collect(input_dir: Path, output_dir: Path, *, expected_plan: dict | None = N
             slug = Path(recipe).stem
             rows = groups.setdefault(slug, [])
             if any(data.get("recipe_path") == recipe
-                   and path.relative_to(input_dir).parts[0].endswith("-" + job["job_id"])
+                   and (path.relative_to(input_dir).parts[0].endswith("-" + job["job_id"])
+                        # download-artifact v7 flattens a single matching
+                        # artifact even when merge-multiple is false.
+                        or (path.parent == input_dir
+                            and data.get("hw_key") == job["hardware_key"]
+                            and data.get("image") == job["image"]))
                    for path, data, _ in rows):
                 continue
             path = input_dir / ("missing-" + job["job_id"]) / f"{slug}.params.json"
