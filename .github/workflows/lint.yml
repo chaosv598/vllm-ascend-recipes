@@ -37,6 +37,8 @@ jobs:
             configuration_status:
               - '.github/_scripts/**'
               - '.github/verification-targets.yaml'
+              - '.github/nightly-recipes.yaml'
+              - 'scripts/verify-recipe.sh'
               - 'public/status/**'
               - 'test/unit/**'
             config:
