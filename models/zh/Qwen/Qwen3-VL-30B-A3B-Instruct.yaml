@@ -10,6 +10,7 @@ meta:
   hardware:
     ascend_950dt: experimental
 
+
 model:
   model_id: "Eco-Tech/Qwen3-VL-30B-A3B-Instruct-w8a8-mxfp8"
   min_vllm_version: "0.13.0"
