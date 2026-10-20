@@ -426,7 +426,7 @@ scenarios:
       ```bash
       curl http://localhost:8077/v1/chat/completions \
           -H 'Content-Type: application/json' \
-          -d '{"model":"glm-5","messages":[{"role":"user","content":"Who are you?"}],"max_tokens":32,"temperature":0}'
+          -d '{"model":"glm-5","messages":[{"role":"user","content":"Who are you?"}],"max_tokens":1024,"temperature":0}'
       ```
 
       预期结果：返回 HTTP 200，且响应中包含 `choices` 字段。
