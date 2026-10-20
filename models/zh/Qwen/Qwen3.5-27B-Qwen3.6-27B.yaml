@@ -749,7 +749,13 @@ scenarios:
       BF16 请将 `MODEL_PATH` 改为 `Qwen/Qwen3.6-27B` 并移除 `--quantization ascend`。Qwen3.5-27B 在有兼容权重时使用相同的混合架构运行时和 MTP 配置。
   - title: 服务验证
     content: |-
-      参见下方“功能验证”部分 —— 日志打印 `Application startup complete.` 即服务就绪。
+      此场景使用服务名 `qwen3.6`，不要直接使用下方共用示例中的 `qwen3.5`。
+
+      ```bash
+      curl --fail-with-body --silent --show-error http://localhost:<port>/v1/completions \
+        -H 'Content-Type: application/json' \
+        -d '{"model":"qwen3.6","prompt":"The future of AI is","max_tokens":50,"temperature":0}'
+      ```
 
 verification: |-
   服务启动后，日志应显示：

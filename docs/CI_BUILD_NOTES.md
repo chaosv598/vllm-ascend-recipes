@@ -49,6 +49,12 @@ multi_node: []
 
 各硬件独立上传原始产物，结束后在 GitHub 托管 runner 上汇总成发布器原先使用的产物名称。同名 recipe 的参数按硬件保留在 `hardware_runs` 中，避免互相覆盖；任一硬件失败或计划中的硬件缺失产物时，模型级汇总不标为通过。跳过的硬件不加入已执行场景列表。
 
+每个已执行场景在参数快照中单独记录 `verification_status`。页面按场景和硬件读取结果，不能把模型汇总失败套给全部硬件，也不能把 curl 命令退出正常当作推理成功。场景自己的任务请求优先于全局请求；只有 readiness 检查时仍需补充全局任务请求。CI 只将当前模型的已知权重标识替换成本地缓存路径，不改请求中的服务模型名。
+
+AISBench 在独立的临时虚拟环境中安装，依赖约束位于 `scripts/ci-aisbench-constraints.txt`，不降级服务进程使用的 Python 包。安装失败或任务不适用时跳过 benchmark；API 冒烟通过不代表性能评测通过。
+
+`Publish Verification Status` 完成后显式触发 Pages 部署，部署读取最新 main。状态提交使用 `GITHUB_TOKEN`，不能依赖其 push 再触发部署。已核实的历史误报由 `.github/verification-corrections.json` 保存运行 ID、精确场景和日志证据，仅纠正已审计记录，不批量重写未知历史或生成新的通过记录。发布和部署均执行修正，之后同步各硬件结果。
+
 本地生成执行计划不占用 NPU：
 
 ```bash

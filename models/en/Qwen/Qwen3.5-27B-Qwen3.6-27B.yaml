@@ -749,7 +749,13 @@ scenarios:
       For BF16, set `MODEL_PATH=Qwen/Qwen3.6-27B` and remove `--quantization ascend`. Qwen3.5-27B uses the same hybrid runtime and MTP settings where a compatible checkpoint is available.
   - title: Service verification
     content: |-
-      See the `verification` section below — the service is up when the log prints `Application startup complete.`
+      Use the served name `qwen3.6` for this scenario, rather than the shared Qwen3.5 example below.
+
+      ```bash
+      curl --fail-with-body --silent --show-error http://localhost:<port>/v1/completions \
+        -H 'Content-Type: application/json' \
+        -d '{"model":"qwen3.6","prompt":"The future of AI is","max_tokens":50,"temperature":0}'
+      ```
 
 verification: |-
   After the service starts, the log should show:

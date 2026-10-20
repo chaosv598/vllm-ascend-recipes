@@ -100,10 +100,21 @@ jobs:
           path: ./recipes
 
       - name: Install benchmark tools
+        working-directory: ./recipes
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          PIP_INDEX_URL: http://cache-service.nginx-pypi-cache.svc.cluster.local/pypi/simple
+          PIP_TRUSTED_HOST: cache-service.nginx-pypi-cache.svc.cluster.local
         run: |
-          pip config set global.index-url http://cache-service.nginx-pypi-cache.svc.cluster.local/pypi/simple
-          pip config set global.trusted-host cache-service.nginx-pypi-cache.svc.cluster.local
-          pip install ais_bench_benchmark 2>&1 | tail -5 || echo "benchmark install skipped"
+          if timeout --signal=TERM --kill-after=30s 14m \
+            bash scripts/install-ci-aisbench.sh --env-file /tmp/ci-aisbench.env; then
+            . /tmp/ci-aisbench.env
+            printf 'AIS_BENCH_BIN=%s\nAIS_BENCH_SOURCE=%s\n' \
+              "$AIS_BENCH_BIN" "$AIS_BENCH_SOURCE" >> "$GITHUB_ENV"
+          else
+            echo "::warning::AISBench setup failed; API verification will run without a benchmark"
+          fi
 
       - name: Write recipe file list
         env:
@@ -127,6 +138,7 @@ jobs:
           STARTED_AT_ISO: ${{ inputs.started_at_iso }}
         run: |
           . /usr/local/Ascend/ascend-toolkit/set_env.sh
+          set -euo pipefail
           mkdir -p /tmp/verify-logs /tmp/verify-results
           PASSED=0
           FAILED=0

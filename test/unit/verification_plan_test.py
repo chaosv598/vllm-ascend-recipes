@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -231,12 +232,48 @@ class RecipeParserTests(unittest.TestCase):
         self.assertEqual(result["action"], "verify")
         self.assertIn("Example/model", result["cache_path"].replace("\\", "/"))
 
+    def test_model_path_alias_uses_the_resolved_offline_directory(self):
+        item = scenario()
+        item["steps"][0]["content"] = (
+            "```bash\nexport MODEL_PATH=model\n"
+            "vllm serve $MODEL_PATH --served-model-name model --port 8123\n```"
+        )
+        result = self.parse([item])
+        command = result["scenarios"][0]["serve_cmd"]
+        self.assertIn("MODEL_PATH=" + shlex.quote(result["cache_path"]), command)
+        self.assertIn("--served-model-name model", command)
+
+    def test_literal_cache_alias_is_resolved_without_rewriting_request_names(self):
+        item = scenario()
+        item["steps"][0]["content"] = (
+            "```bash\nvllm serve model --served-model-name model --port 8123\n```"
+        )
+        result = self.parse([item])
+        command = result["scenarios"][0]["serve_cmd"]
+        self.assertIn("vllm serve " + shlex.quote(result["cache_path"]), command)
+        self.assertIn("--served-model-name model", command)
+
     def test_log_example_does_not_hide_later_global_request(self):
         verification = "```bash\nINFO: Server ready\n```\n```bash\ncurl http://<node_ip>:<port>/v1/embeddings\n```"
         result = self.parse([scenario()], verification=verification, tasks=["embedding"])
         checks = result["scenarios"][0]["verify_cmds"]
         self.assertEqual(checks, ["curl http://localhost:8123/v1/embeddings"])
         self.assertFalse(result["scenarios"][0]["benchmark_chat"])
+
+    def test_scenario_task_check_overrides_global_request_for_another_variant(self):
+        item = scenario()
+        item["steps"].append({"content": "```bash\ncurl http://<server_ip>:<port>/v1/chat/completions -d '{\"model\":\"a5-model\"}'\n```"})
+        global_check = "```bash\ncurl http://<server_ip>:<port>/v1/chat/completions -d '{\"model\":\"a2-model\"}'\n```"
+        result = self.parse([item], verification=global_check)
+        checks = result["scenarios"][0]["verify_cmds"]
+        self.assertEqual(len(checks), 1)
+        self.assertIn('"model":"a5-model"', checks[0])
+
+    def test_local_readiness_does_not_replace_the_global_inference_check(self):
+        item = scenario()
+        item["steps"].append({"content": "```bash\ncurl http://<server_ip>:<port>/v1/models\n```"})
+        result = self.parse([item], verification="```bash\ncurl http://<server_ip>:<port>/v1/embeddings\n```")
+        self.assertEqual(len(result["scenarios"][0]["verify_cmds"]), 2)
 
     def test_python_reranker_check_is_not_reduced_to_server_readiness(self):
         text = "```python\nimport requests\nrequests.post('http://<server_ip>:<port>/score', json={})\n```"
@@ -250,7 +287,7 @@ class RecipeWorkflowLoopTests(unittest.TestCase):
         step = next(s for s in workflow["jobs"]["recipe-verify"]["steps"] if s.get("name") == "Verify recipes")
         # Exercise the real loop after CANN setup, with a verifier double that
         # returns the documented exit codes. Never start an NPU server here.
-        loop = "mkdir -p" + step["run"].split("mkdir -p", 1)[1]
+        loop = step["run"].replace(". /usr/local/Ascend/ascend-toolkit/set_env.sh", "true")
         for name, expected_rc, expected_status in [("skip", 0, "skip"), ("fail", 1, "fail")]:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
@@ -261,7 +298,12 @@ class RecipeWorkflowLoopTests(unittest.TestCase):
                 )
                 (root / "recipe_list.txt").write_text(f"{name}.yaml\npass.yaml\n", encoding="utf-8", newline="\n")
                 script = 'export PATH="/usr/bin:/bin:$PATH"\n' + loop.replace("/tmp/", "./")
-                result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", script],
+                entry = root / "verify-step.sh"
+                entry.write_text(script, encoding="utf-8", newline="\n")
+                # Do not add shell flags absent from production: that hid the
+                # tee pipeline swallowing the verifier's failure exit code.
+                shell = shlex.split(workflow["defaults"]["run"]["shell"])
+                result = subprocess.run([part.replace("{0}", str(entry)) for part in shell],
                                         cwd=root, text=True, capture_output=True)
                 self.assertEqual(result.returncode, expected_rc, result.stderr)
                 status = root / "verify-results" / f"{name}.status"

@@ -1,0 +1,7 @@
+# Keep the CI benchmark release and its NumPy ABI dependencies compatible.
+ais_bench_benchmark==3.1.20260630
+numpy==1.26.4
+# PyArrow 26 requires NumPy 2; AISBench requires NumPy < 2.
+pyarrow==25.0.1
+# OpenCV 4.12+ requires NumPy 2 on newer Python versions.
+opencv-python-headless==4.11.0.86
