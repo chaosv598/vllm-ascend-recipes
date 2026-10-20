@@ -417,9 +417,11 @@ scenarios:
           --enable-auto-tool-choice \
           --tool-call-parser glm47 \
           --reasoning-parser glm45 \
+          --kv-cache-dtype fp8 \
+          --attention_config.indexer_kv_dtype fp8 \
           --compilation-config '{"cudagraph_mode": "FULL_DECODE_ONLY"}' \
           --hf-overrides '{"use_index_cache": true, "index_topk_freq": 4}' \
-          --additional-config '{"enable_cpu_binding": "True", "multistream_overlap_shared_expert": "True", "enable_sparse_c8": "True", "enable_dsa_cp": true, "eplb_config": {"dynamic_eplb": true, "expert_heat_collection_interval": 50, "algorithm_execution_interval": 5, "eplb_policy_type": 2, "num_redundant_experts": 0}}'
+          --additional-config '{"enable_cpu_binding": "True", "multistream_overlap_shared_expert": "True", "enable_dsa_cp": true, "eplb_config": {"dynamic_eplb": true, "expert_heat_collection_interval": 50, "algorithm_execution_interval": 5, "eplb_policy_type": 2, "num_redundant_experts": 0}}'
       ```
   - title: 服务验证
     content: |-

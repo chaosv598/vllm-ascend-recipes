@@ -286,6 +286,20 @@ class RecipeParserTests(unittest.TestCase):
             self.assertNotIn('"model":"qwen3.5"', command.replace(" ", ""))
         self.assertTrue(result["scenarios"][0]["benchmark_chat"])
 
+    def test_glm_a5_uses_dtype_flags_instead_of_removed_sparse_c8_option(self):
+        for language in ("en", "zh"):
+            with self.subTest(language=language):
+                recipe = yaml.safe_load((ROOT / f"models/{language}/THUDM/GLM-5.yaml").read_text(encoding="utf-8"))
+                selected = [dict(item, deployment="Single-Node") for item in recipe["scenarios"]
+                            if item.get("strategy") == "single_node_A5"]
+                result = self.parse(selected)
+                self.assertEqual(len(result["scenarios"]), 1)
+                args = shlex.split(result["scenarios"][0]["serve_cmd"].replace("\\\n", " "))
+                config = json.loads(args[args.index("--additional-config") + 1])
+                self.assertNotIn("enable_sparse_c8", config)
+                self.assertEqual(args[args.index("--kv-cache-dtype") + 1], "fp8")
+                self.assertEqual(args[args.index("--attention_config.indexer_kv_dtype") + 1], "fp8")
+
     def test_python_reranker_check_is_not_reduced_to_server_readiness(self):
         text = "```python\nimport requests\nrequests.post('http://<server_ip>:<port>/score', json={})\n```"
         result = self.parse([scenario()], verification=text, tasks=["reranking"])
@@ -293,6 +307,36 @@ class RecipeParserTests(unittest.TestCase):
 
 
 class RecipeWorkflowLoopTests(unittest.TestCase):
+    def test_benchmark_refreshes_arrow_after_install_and_propagates_refresh_failure(self):
+        workflow = yaml.safe_load((ROOT / ".github/workflows/_recipe_verify.yml").read_text(encoding="utf-8"))
+        step = next(s for s in workflow["jobs"]["recipe-verify"]["steps"] if s.get("name") == "Install benchmark tools")
+        # Replace only the external package installer; execute the real step's
+        # shell, ordering and failure handling without downloading packages.
+        installer = '''pip() {
+  printf '%s\\n' "$*" >> "$PIP_CALLS"
+  if [[ "$*" == *"pyarrow==25.0.0"* ]]; then
+    return "$ARROW_INSTALL_EXIT"
+  fi
+  return 0
+}
+'''
+        for install_exit in (0, 23):
+            with self.subTest(install_exit=install_exit), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                entry = root / "install-step.sh"
+                entry.write_text(installer + step["run"], encoding="utf-8", newline="\n")
+                calls_path = root / "pip-calls.txt"
+                env = {**os.environ, "PIP_CALLS": str(calls_path), "ARROW_INSTALL_EXIT": str(install_exit)}
+                shell = shlex.split(workflow["defaults"]["run"]["shell"])
+                result = subprocess.run([part.replace("{0}", str(entry)) for part in shell],
+                                        env=env, text=True, capture_output=True)
+                calls = [shlex.split(line) for line in calls_path.read_text().splitlines()]
+                aisbench = next(i for i, args in enumerate(calls) if "ais_bench_benchmark" in args)
+                arrow = [i for i, args in enumerate(calls) if "pyarrow==25.0.0" in args]
+                self.assertEqual(len(arrow), 1, result.stdout)
+                self.assertGreater(arrow[0], aisbench)
+                self.assertEqual(result.returncode, install_exit, result.stderr)
+
     def test_skip_and_failure_are_stamped_and_do_not_abort_later_recipes(self):
         workflow = yaml.safe_load((ROOT / ".github/workflows/_recipe_verify.yml").read_text(encoding="utf-8"))
         step = next(s for s in workflow["jobs"]["recipe-verify"]["steps"] if s.get("name") == "Verify recipes")
