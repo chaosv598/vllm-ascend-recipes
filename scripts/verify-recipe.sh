@@ -390,6 +390,7 @@ for i, s in enumerate(info.get('scenarios', [])):
         'deployment': s.get('deployment', ''),
         'case': s.get('case', ''),
         'serve_cmd': s.get('serve_cmd', ''),
+        'verification_status': 'unknown',
     })
 
 params_doc = {
@@ -398,6 +399,7 @@ params_doc = {
     'model_id': info.get('model_id', ''),
     'hw_key': info.get('hw_key', ''),
     'head_sha': HEAD_SHA,
+    'workflow_run_id': os.environ.get('GITHUB_RUN_ID', ''),
     'trigger_type': TRIGGER_TYPE,
     'image': VLLM_IMAGE,
     'started_at': os.environ.get('STARTED_AT_ISO', '')
@@ -415,8 +417,17 @@ with open(out_path, 'w') as fp:
     json.dump(params_doc, fp, indent=2, ensure_ascii=False)
 print(f'[PARAMS] wrote {out_path}', file=sys.stderr)
 "
+PARAMS_FILE="${RUN_PARAMS_DIR:-/tmp/verify-results}/$(basename "$RECIPE" .yaml).params.json"
+record_scenario_result() {
+  if ! "$PYTHON" "$SCRIPT_DIR/../.github/_scripts/record_scenario_result.py" \
+    --params "$PARAMS_FILE" --index "$idx" --status "$1" --reason "${2:-}"; then
+    log_error "  Failed to persist scenario outcome"
+    STATUS=1
+  fi
+}
 while IFS='|' read -r idx npu precision deployment case_name; do
   [ -z "$idx" ] && continue
+  SCENARIO_FAILED=0
 
   if [[ "${CI_RUNNER_SMOKE:-0}" == "1" ]] && [[ "$idx" != "0" ]]; then
     continue
@@ -432,12 +443,14 @@ while IFS='|' read -r idx npu precision deployment case_name; do
   if [[ -z "$SERVE_CMD" ]]; then
     log_warn "  No vllm serve command found, skipping"
     SKIPPED=1
+    record_scenario_result skip "No vllm serve command"
     continue
   fi
 
   if [[ -z "$VERIFY_CMD" ]]; then
     log_warn "  No executable task request in recipe; readiness alone is not a pass"
     SKIPPED=1
+    record_scenario_result skip "No executable task request"
     continue
   fi
 
@@ -445,6 +458,7 @@ while IFS='|' read -r idx npu precision deployment case_name; do
   if echo "$SERVE_CMD" | grep -qE '\$[0-9]'; then
     log_warn "  Multi-node scenario (contains positional params), skipping"
     SKIPPED=1
+    record_scenario_result skip "Multi-node command is outside single-node verification"
     continue
   fi
 
@@ -487,6 +501,7 @@ SCRIPT_HEREDOC
     log_error "  Server failed to become ready within 600s"
     kill $SERVE_PID 2>/dev/null || true
     STATUS=1
+    record_scenario_result fail "Model server did not become ready"
     continue
   fi
 
@@ -498,6 +513,7 @@ SCRIPT_HEREDOC
     log_error "  /v1/models returned unexpected response"
     kill $SERVE_PID 2>/dev/null || true
     STATUS=1
+    record_scenario_result fail "Invalid model readiness response"
     continue
   fi
 
@@ -526,6 +542,7 @@ SCRIPT_HEREDOC
       echo "$RESP" | while IFS= read -r rline; do log_error "  | $rline"; done
       log_error "  ====== END ======"
       STATUS=1
+      SCENARIO_FAILED=1
     elif "$PYTHON" "$SCRIPT_DIR/../.github/_scripts/recipe_checks.py" --check-proof "$PROOF_FILE"; then
       TASK_VERIFIED=1
       log_info "  Recipe curl verification PASSED"
@@ -540,6 +557,7 @@ SCRIPT_HEREDOC
       else
         log_error "  Task response validation FAILED"
         STATUS=1
+        SCENARIO_FAILED=1
       fi
     fi
   fi
@@ -579,10 +597,14 @@ SCRIPT_HEREDOC
   pkill -f "vllm serve" 2>/dev/null || true
   log_info "  Server stopped."
 
-  if [[ "$STATUS" -ne 0 ]]; then
+  if [[ "$SCENARIO_FAILED" -ne 0 ]]; then
+    record_scenario_result fail "Task response validation failed"
     log_error "FAILED: $MODEL_ID scenario [$idx]"
-  else
+  elif [[ "$TASK_VERIFIED" -eq 1 ]]; then
+    record_scenario_result pass "Task API response validated"
     log_info "PASSED: $MODEL_ID scenario [$idx]"
+  else
+    record_scenario_result skip "No supported task request was verified"
   fi
 done < /tmp/scenario_list.txt
 
