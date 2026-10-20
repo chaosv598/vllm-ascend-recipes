@@ -35,10 +35,10 @@ model:
     OMP_NUM_THREADS: "1"
     TASK_QUEUE_ENABLE: "1"
   docker_image:
-    atlas_800_a2: "quay.io/ascend/vllm-ascend:v0.18.0rc1"
-    atlas_800_a3: "quay.io/ascend/vllm-ascend:v0.18.0rc1-a3"
-    atlas_300i_duo: "quay.io/ascend/vllm-ascend:v0.23.0rc1-310p"
-    ascend_950dt: "quay.io/ascend/vllm-ascend:v0.23.0rc1-a5"
+    atlas_800_a2: "quay.io/ascend/vllm-ascend:v0.30.0rc2"
+    atlas_800_a3: "quay.io/ascend/vllm-ascend:v0.30.0rc2-a3"
+    atlas_300i_duo: "quay.io/ascend/vllm-ascend:v0.30.0rc2-310p"
+    ascend_950dt: "quay.io/ascend/vllm-ascend:v0.30.0rc2-a5"
   nightly_required: false
   install:
     # Ascend recommends Docker; pip requires source build (no official wheel), so the pip tab is hidden.

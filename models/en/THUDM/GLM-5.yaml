@@ -35,9 +35,9 @@ model:
     PYTORCH_NPU_ALLOC_CONF: "expandable_segments:True"
     VLLM_ASCEND_BALANCE_SCHEDULING: "1"
   docker_image:
-    atlas_800_a2: "quay.io/ascend/vllm-ascend:v0.22.1rc"
-    atlas_800_a3: "quay.io/ascend/vllm-ascend:v0.22.1rc-a3"
-    ascend_950dt: "swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:v0.23.0-a5"
+    atlas_800_a2: "quay.io/ascend/vllm-ascend:v0.30.0rc2"
+    atlas_800_a3: "quay.io/ascend/vllm-ascend:v0.30.0rc2-a3"
+    ascend_950dt: "quay.io/ascend/vllm-ascend:v0.30.0rc2-a5"
   nightly_required: false
   install:
     # Ascend recommends Docker; pip requires source build (no official wheel), so the pip tab is hidden.
